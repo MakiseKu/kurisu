@@ -1,0 +1,14 @@
+{
+  "name": "kurisu-desktop",
+  "version": "1.0.0",
+  "description": "Amadeus - 牧濑红莉栖 AI 桌宠",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-reloader": "^1.2.3"
+  }
+}

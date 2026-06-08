@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Amadeus · 牧濑红莉栖</title>
+  <style>
+    html { background: transparent !important; }
+    body {
+      margin: 0; padding: 16px;
+      background: transparent;          /* ★ 透明窗口 body 必须透明，否则拖拽 hit-test 失效 */
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      display: flex; flex-direction: column; align-items: flex-start;
+      min-height: 100vh; box-sizing: border-box;
+      -webkit-app-region: drag;         /* ★ body 整体可拖拽 */
+      user-select: none;                /* ★ 拖拽时防止文字被误选 */
+    }
+    .card {
+      background: rgba(18, 14, 36, 0.92);
+      border: 1px solid rgba(160, 110, 255, 0.25);
+      border-radius: 18px; padding: 16px 18px;
+      max-width: 360px; width: 100%;
+      box-shadow: 0 4px 24px rgba(120,60,220,0.18), 0 1px 4px rgba(0,0,0,0.4);
+      animation: fadeSlideIn 0.4s ease forwards;
+      -webkit-app-region: no-drag;      /* ★ card 内部默认 no-drag，由 header 单独开启 */
+    }
+    @keyframes fadeSlideIn {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    /* ★ header 是拖动手柄 */
+    .header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px;
+      -webkit-app-region: drag;         /* ★ header 整行可拖拽 */
+      cursor: move;
+    }
+    .avatar {
+      width:36px; height:36px; border-radius:50%;
+      background: linear-gradient(135deg, #c084fc, #818cf8);
+      flex-shrink:0; display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+      -webkit-app-region: no-drag;
+    }
+    .header-text { flex:1; -webkit-app-region: no-drag; }
+    .name { font-size:13px; font-weight:600; color:#c084fc; letter-spacing:0.5px; }
+    .subtitle { font-size:11px; color:rgba(160,130,200,0.6); margin-top:1px; }
+    .status-dot {
+      width:7px; height:7px; border-radius:50%; background:#4ade80;
+      flex-shrink:0; animation: pulse 2.4s ease-in-out infinite;
+      -webkit-app-region: no-drag;
+    }
+    @keyframes pulse {
+      0%,100%{ opacity:1; transform:scale(1); }
+      50%    { opacity:0.5; transform:scale(0.85); }
+    }
+    .divider {
+      height:1px;
+      background: linear-gradient(to right, transparent, rgba(160,110,255,0.25), transparent);
+      margin-bottom:12px;
+    }
+    .context-tag {
+      display:inline-flex; align-items:center; gap:4px;
+      font-size:11px; color:#a78bfa;
+      background:rgba(120,80,220,0.15); border:1px solid rgba(120,80,220,0.28);
+      border-radius:20px; padding:2px 10px 2px 7px; margin-bottom:10px;
+      max-height:0; opacity:0; overflow:hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+    }
+    .context-tag.visible { max-height:30px; opacity:1; }
+    .context-tag-dot { width:5px; height:5px; border-radius:50%; background:#a78bfa; flex-shrink:0; }
+    .reply-area { min-height:48px; }
+    .reply-zh {
+      font-size:14px; line-height:1.7; color:#ede9fe; margin-bottom:6px;
+      animation: textFadeIn 0.5s ease;
+      user-select: text;                /* ★ 允许复制台词文字 */
+      -webkit-app-region: no-drag;
+    }
+    .reply-en {
+      font-size:12px; line-height:1.5; color:rgba(190,160,255,0.45); font-style:italic;
+      user-select: text;
+      -webkit-app-region: no-drag;
+    }
+    @keyframes textFadeIn { from{opacity:0;} to{opacity:1;} }
+    /* ★ 工具栏按钮加 no-drag，确保可点击 */
+    .toolbar {
+      display:flex; align-items:center; gap:6px;
+      margin-top:14px; padding-top:10px;
+      border-top:1px solid rgba(120,80,200,0.12);
+    }
+    .tool-btn {
+      width:28px; height:28px; border-radius:8px;
+      border:1px solid rgba(120,80,200,0.22);
+      background:rgba(80,50,140,0.18); color:rgba(190,160,255,0.7);
+      font-size:14px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      -webkit-app-region: no-drag;
+      user-select: none;
+    }
+    .tool-btn:hover { background:rgba(120,80,200,0.3); border-color:rgba(160,110,255,0.45); color:#c084fc; }
+    .tool-btn.active { background:rgba(160,110,255,0.25); border-color:rgba(160,110,255,0.55); color:#c084fc; }
+    .toolbar-spacer { flex:1; }
+    .thinking { display:none; align-items:center; gap:6px; font-size:12px; color:rgba(160,130,200,0.6); }
+    .thinking.visible { display:flex; }
+    .thinking-dots span {
+      display:inline-block; width:4px; height:4px; border-radius:50%;
+      background:#a78bfa; animation: dotBounce 1.2s infinite;
+    }
+    .thinking-dots span:nth-child(2){ animation-delay:0.2s; }
+    .thinking-dots span:nth-child(3){ animation-delay:0.4s; }
+    @keyframes dotBounce {
+      0%,80%,100%{ transform:translateY(0); opacity:0.4; }
+      40%        { transform:translateY(-4px); opacity:1; }
+    }
+    .mode-badge {
+      font-size:10px; color:rgba(160,130,200,0.4);
+      padding:1px 6px; border-radius:4px;
+      background:rgba(120,80,200,0.08);
+      -webkit-app-region: no-drag;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="avatar">🧪</div>
+      <div class="header-text">
+        <div class="name">牧濑红莉栖</div>
+        <div class="subtitle">Amadeus · 脑科学研究所</div>
+      </div>
+      <div class="status-dot" id="status-dot"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="context-tag" id="context-tag">
+      <div class="context-tag-dot"></div>
+      <span id="context-tag-text">切换到 ...</span>
+    </div>
+    <div class="reply-area">
+      <div class="thinking" id="thinking">
+        思考中
+        <div class="thinking-dots"><span></span><span></span><span></span></div>
+      </div>
+      <div class="reply-zh" id="reply-zh">……哼，你终于来了。</div>
+      <div class="reply-en" id="reply-en"></div>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" id="btn-tts" title="语音开关">🔊</button>
+      <button class="tool-btn" id="btn-refresh" title="刷新">↺</button>
+      <div class="toolbar-spacer"></div>
+      <span class="mode-badge" id="mode-badge"></span>
+      <button class="tool-btn" id="btn-settings" title="设置">⚙</button>
+    </div>
+  </div>
+
+  <script>
+    let hideTagTimer = null
+    let ttsEnabled = false
+
+    function parseReply(raw) {
+      const enMatch = raw.match(/^EN:\s*(.+)$/m)
+      const zhMatch = raw.match(/^ZH:\s*(.+)$/m)
+      return {
+        en: enMatch ? enMatch[1].trim() : '',
+        zh: zhMatch ? zhMatch[1].trim() : raw.trim(),
+      }
+    }
+
+    function setReply(zh, en) {
+      const zhEl = document.getElementById('reply-zh')
+      const enEl = document.getElementById('reply-en')
+      zhEl.style.animation = 'none'
+      zhEl.offsetHeight
+      zhEl.style.animation = ''
+      zhEl.textContent = zh
+      enEl.textContent = en
+    }
+
+    function showContextTag(appName) {
+      const tag = document.getElementById('context-tag')
+      const label = appName.replace(/\.exe$/i, '')
+      document.getElementById('context-tag-text').textContent = '切换到 ' + label
+      tag.classList.add('visible')
+      clearTimeout(hideTagTimer)
+      hideTagTimer = setTimeout(() => tag.classList.remove('visible'), 3000)
+    }
+
+    function setThinking(on) {
+      const el = document.getElementById('thinking')
+      const zh = document.getElementById('reply-zh')
+      const en = document.getElementById('reply-en')
+      if (on) { el.classList.add('visible'); zh.style.opacity='0.3'; en.style.opacity='0.3'; }
+      else    { el.classList.remove('visible'); zh.style.opacity=''; en.style.opacity=''; }
+    }
+
+    function setModeBadge(text) {
+      document.getElementById('mode-badge').textContent = text
+    }
+
+    document.getElementById('btn-tts').addEventListener('click', function() {
+      ttsEnabled = !ttsEnabled
+      this.classList.toggle('active', ttsEnabled)
+      this.textContent = ttsEnabled ? '🔊' : '🔇'
+    })
+
+    document.getElementById('btn-refresh').addEventListener('click', function() {
+      setThinking(true)
+      setTimeout(() => setThinking(false), 1500)
+    })
+
+    // ── 模式 1：pywebview ─────────────────────────────────────────────
+    let pywebviewReady = false
+    window.addEventListener('pywebviewready', () => {
+      pywebviewReady = true
+      setModeBadge('pywebview')
+      setInterval(async () => {
+        try {
+          const data = await window.pywebview.api.get_screen_context()
+          if (!data) return
+          const rawReply = typeof data === 'object' ? data.reply : data
+          const processName = typeof data === 'object' ? data.process : ''
+          const { en, zh } = parseReply(rawReply)
+          setReply(zh, en)
+          if (processName) showContextTag(processName)
+        } catch(e) { console.error('[pywebview]', e) }
+      }, 1500)
+    })
+
+    // ── 模式 2：Electron + FastAPI ────────────────────────────────────
+    const API_BASE = 'http://127.0.0.1:8765'
+
+    // ★ 修复：ping 时增加重试次数，避免后端 RAG 初始化较慢时误判为离线
+    async function pingBackend(retries = 10, intervalMs = 1500) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const ctrl = new AbortController()
+          const timer = setTimeout(() => ctrl.abort(), 2000)
+          const res = await fetch(API_BASE + '/api/ping', { signal: ctrl.signal })
+          clearTimeout(timer)
+          if (res.ok) return true
+        } catch (_) { /* ignore */ }
+        if (i < retries - 1) await new Promise(r => setTimeout(r, intervalMs))
+      }
+      return false
+    }
+
+    async function tryElectronMode() {
+      if (pywebviewReady) return
+
+      const ok = await pingBackend()
+      if (!ok) {
+        console.warn('[Electron] 后端未响应，进入 Mock 模式（开发预览）')
+        startMockMode()
+        return
+      }
+
+      console.log('[Electron] 后端连接成功 ✓')
+      setModeBadge('Electron')
+
+      setInterval(async () => {
+        if (pywebviewReady) return
+        try {
+          const ctrl = new AbortController()
+          const timer = setTimeout(() => ctrl.abort(), 5000)
+          const res = await fetch(API_BASE + '/api/context', { signal: ctrl.signal })
+          clearTimeout(timer)
+          const data = await res.json()
+          if (!data.reply) return
+          const { en, zh } = parseReply(data.reply)
+          setReply(zh, en)
+          if (data.process) showContextTag(data.process)
+        } catch(e) { console.warn('[Electron] fetch error:', e.message) }
+      }, 1500)
+    }
+
+    // ── 模式 3：Mock（Live Server 预览）──────────────────────────────
+    function startMockMode() {
+      if (pywebviewReady) return
+      console.log('[Mock] 进入开发预览模式')
+      setModeBadge('mock')
+      const replies = [
+        { zh:'……哼，你终于来了。有什么事快说。', en:'You finally showed up. Speak.' },
+        { zh:'这个问题嘛……从神经科学角度来看，相当有趣。', en:'From a neuroscience perspective, this is actually quite interesting.' },
+        { zh:'不许叫我"助手"。我有名字的。', en:"Don't call me an assistant. I have a name." },
+        { zh:'…你在看什么？别以为我没注意到。', en:"...What are you looking at? Don't think I didn't notice." },
+        { zh:'才、才不是因为想帮你才说的……才怪。', en:"I-It's not like I wanted to help you... okay, maybe I did." },
+      ]
+      const procs = ['chrome.exe','Code.exe','cursor.exe','']
+      let idx = 0
+      function tick() {
+        const r = replies[idx % replies.length]
+        const p = procs[idx % procs.length]
+        setReply(r.zh, r.en)
+        if (p) showContextTag(p)
+        idx++
+      }
+      tick()
+      setInterval(tick, 4000)
+    }
+
+    // ── 启动：立即检测运行模式（主进程已等待后端就绪才加载页面）────────
+    tryElectronMode()
+  </script>
+</body>
+</html>
