@@ -168,8 +168,8 @@ let petWindow = null
 
 function createPetWindow() {
   petWindow = new BrowserWindow({
-    width: 320,
-    height: 320,
+    width: 420,
+    height: 520,
 
     // 无边框：去掉标题栏，拖拽由 pet.html CSS -webkit-app-region:drag 接管
     frame: false,
@@ -177,16 +177,14 @@ function createPetWindow() {
     /*
      * ★ transparent: true
      *
-     * 作用：让窗口的背景层变成真正透明，即 OS 合成层上这个窗口的
-     * 非绘制区域不再填充黑色/白色，而是直接显示底层桌面/窗口。
+     * 让窗口的 OS 合成层透明，配合 pet.html 里的 CSS background:transparent
+     * 才能实现真正的透明效果（两者缺一不可）。
      *
-     * 与 pet.html 里 body { background: transparent } 的关系：
-     *   · CSS transparent 只告诉渲染引擎"不画背景色"
-     *   · 但如果 Electron 窗口本身 transparent:false，OS 会在窗口
-     *     下方垫一层不透明底色（通常是黑色），CSS 的透明就被遮住了
-     *   · 两者必须同时设置才能看到真正的透明效果
-     *
-     * 
+     * 对拖拽的影响：
+     *   · -webkit-app-region:drag 在有可见像素的区域依然完全有效
+     *   · 拖 GIF 图片 = 移动整个窗口，和有背景色时完全一样
+     *   · 真正破坏拖拽的是 setIgnoreMouseEvents(true,{forward:true})
+     *     本项目没有使用，所以拖拽完全正常
      *
      * ★ 关于 resizable 的重要说明（Windows 已知限制）：
      *   Windows 上，调整窗口大小依赖 WS_THICKFRAME 窗口样式，
@@ -194,12 +192,12 @@ function createPetWindow() {
      *   因此在 Windows 上，transparent:true 时 resizable:true 实际无效——
      *   窗口边缘无法拖拽缩放，即使设置了 resizable:true 也没有效果。
      *   （Electron GitHub issue #6107，长期存在的 OS 层面限制）
-     *   所以这里可以直接设为 false，避免产生"以为可以缩放但其实不行"的误导。
+     *   所以这里直接设为 false，避免产生"以为可以缩放但其实不行"的误导。
      */
     transparent: true,
 
     alwaysOnTop: true,
-    resizable: true,
+    resizable: false,   // Windows 上 transparent:true 时 resizable 无效，明确设 false
     hasShadow: false,
 
     x: 1400,
